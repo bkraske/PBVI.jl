@@ -22,13 +22,6 @@ struct AlphaVec
     action::Any
 end
 
-==(a::AlphaVec, b::AlphaVec) = (a.alpha, a.action) == (b.alpha, b.action)
-Base.hash(a::AlphaVec, h::UInt) = hash(a.alpha, hash(a.action, h))
-
-function _argmax(f, X)
-    return X[argmax(map(f, X))]
-end
-
 function max_alpha_val(Γ, b)
     max_α = first(Γ)
     max_val = -Inf
@@ -72,29 +65,47 @@ function belief_norm(pomdp, b, b′, terminals, not_terminals)
 end
 
 # Backups belief with α vector maximizing dot product of itself with belief b
-function backup_belief(pomdp::POMDP, Γ, b)
+function backup_belief(pomdp::POMDP, Γ, b, spomdp)
     S = ordered_states(pomdp)
     A = ordered_actions(pomdp)
-    O = ordered_observations(pomdp)
+    # O = ordered_observations(pomdp)
     γ = discount(pomdp)
-    r = StateActionReward(pomdp)
-    spomdp = SparseTabularPOMDP(m)
+    # r = StateActionReward(pomdp)
 
     Γa = Vector{Vector{Float64}}(undef, length(A))
 
-    not_terminals = [stateindex(pomdp, s) for s in S if !isterminal(pomdp, s)]
-    terminals = [stateindex(pomdp, s) for s in S if isterminal(pomdp, s)]
+    terminals = spomdp.terminal_states
+    not_terminals = deleteat!(collect(1:length(S)),terminals)
+    # not_terminals = [stateindex(pomdp, s) for s in S if !isterminal(pomdp, s)]
+    # terminals = [stateindex(pomdp, s) for s in S if isterminal(pomdp, s)]
     for a in A
-        Γao = Vector{Vector{Float64}}(undef, length(O))
-        trans_probs = dropdims(sum([pdf(transition(pomdp, S[is], a), sp) * b.b[is] for sp in S, is in not_terminals], dims=2), dims=2)
+        a_ind = actionindex(pomdp,a)
+        O1 = spomdp.O[a_ind]
+        T = spomdp.T[a_ind]
+        O_len = length(O1[1,:])
+        Γao = Vector{Vector{Float64}}(undef,O_len)
+        # @show [pdf(transition(pomdp, S[is], a), sp) * b.b[is] for sp in S, is in not_terminals]
+        # @show trans_probs = dropdims(sum([pdf(transition(pomdp, S[is], a), sp) * b.b[is] for sp in S, is in not_terminals], dims=2), dims=2)
+        trans_probs = zeros(length(S))
+        for is ∈ not_terminals
+            for sp ∈ S
+                sp_i = stateindex(pomdp,sp)
+                trans_probs[sp_i] += b.b[is]*T[is,sp_i]
+            end
+        end
+        # @show trans_probs
+
         if !isempty(terminals)
             trans_probs[terminals] .+= b.b[terminals]
         end
 
-        for o in O
+        for o_i in 1:O_len
             # update beliefs
-            obs_probs = pdf.(map(sp -> observation(pomdp, a, sp), S), [o])
-            b′ = obs_probs .* trans_probs
+            # obs_probs = pdf.(map(sp -> observation(pomdp, a, sp), S), [o])
+            # @show pdf.(map(sp -> observation(pomdp, a, sp), S), [ordered_observations(pomdp)[o_i]])
+            obs_probs = O1[:,o_i]
+            # @show obs_probs
+            b′ = Vector(obs_probs .* trans_probs)
 
             if sum(b′) > 0.0
                 b′ = DiscreteBelief(pomdp, b.state_list, belief_norm(pomdp, b.b, b′, terminals, not_terminals))
@@ -103,16 +114,25 @@ function backup_belief(pomdp::POMDP, Γ, b)
             end
 
             # extract optimal alpha vector at resulting belief
-            Γao[obsindex(pomdp, o)] = max_alpha_val(Γ, b′.b)
+            Γao[o_i] = max_alpha_val(Γ, b′.b)
         end
 
         # construct new alpha vectors
         # Γa[actionindex(pomdp, a)] = [r(s, a) + (!isterminal(pomdp, s) ? (γ * sum(pdf(transition(pomdp, s, a), sp) * pdf(observation(pomdp, s, a, sp), o) * Γao[i][j]
-                                                                                 for (j, sp) in enumerate(S), (i, o) in enumerate(O))) : 0.0)
-                                    #  for s in S]
-        Γa[actionindex(pomdp, a)] = [r(s, a) + (!isterminal(pomdp, s) ? (γ * sum(pdf(transition(pomdp, s, a), sp) * pdf(observation(pomdp, s, a, sp), o) * Γao[i][j]
-                                                                                 for (j, sp) in enumerate(S), (i, o) in enumerate(O))) : 0.0)
-                                     for s in S]
+        #                                                                          for (j, sp) in enumerate(S), (i, o) in enumerate(O))) : 0.0)
+        #                              for s in S]
+        
+        Γa[a_ind] = zeros(length(S))
+        for s_i in 1:length(S)
+            Γa[a_ind][s_i] = spomdp.R[s_i,a_ind] 
+            for sp_i in 1:length(S)
+                for o_i in 1:O_len
+                    if s_i ∉ terminals
+                        Γa[a_ind][s_i] += γ*T[s_i,sp_i]*O1[sp_i,o_i]*Γao[o_i][sp_i]
+                    end
+                end
+            end
+        end
     end
 
     # find the optimal alpha vector
@@ -125,9 +145,10 @@ end
 # Iteratively improves α vectors until the gap between steps is lesser than ϵ
 function improve(pomdp, B, Γ, solver)
     alphavecs = nothing
+    spomdp = SparseTabularPOMDP(pomdp)
     while true
         Γold = Γ
-        alphavecs = [backup_belief(pomdp, Γold, b) for b in B]
+        alphavecs = [backup_belief(pomdp, Γold, b, spomdp) for b in B]
         Γ = [alphavec.alpha for alphavec in alphavecs]
         prec = max([sum(abs.(dot(α1, b.b) .- dot(α2, b.b))) for (α1, α2, b) in zip(Γold, Γ, B)]...)
         if solver.verbose

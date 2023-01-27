@@ -106,7 +106,7 @@ function backup_belief(pomdp::POMDP, cache::PBVI_cache, Γ, b) #ADD WITNESSES?
         a_ind = actionindex(pomdp, a)
         O1 = cache.spomdp.O[a_ind]
         T = cache.spomdp.T[a_ind]
-        O_len = length(O1[1, :])
+        @views O_len = size(O1,2)
 
         Γao = cache.Γao #Vector{Vector{Float64}}(undef, O_len)
 
@@ -158,10 +158,14 @@ end
 
 # Iteratively improves α vectors until the gap between steps is lesser than ϵ
 function improve(pomdp, cache, B, Γ, solver)
-    alphavecs = nothing
+    # alphavecs = nothing
+    alphavecs = Vector{AlphaVec}(undef, length(B))
     while true
         Γold = Γ
-        alphavecs = [backup_belief(pomdp, cache, Γold, b) for b in B]
+        for (i,b) in enumerate(B)
+            alphavecs[i] = backup_belief(pomdp, cache, Γold, b)
+        end
+        # alphavecs = [backup_belief(pomdp, cache, Γold, b) for b in B]
         Γ = [alphavec.alpha for alphavec in alphavecs]
         prec = max([sum(abs.(dot(α1, b.b) .- dot(α2, b.b))) for (α1, α2, b) in zip(Γold, Γ, B)]...)
         if solver.verbose

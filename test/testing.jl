@@ -3,7 +3,9 @@ using POMDPTools
 using POMDPModels
 import PointBasedValueIteration
 using BenchmarkTools
+using RockSample
 
 m = TigerPOMDP()
-solver = PBVISolver2()
-solver2 = PointBasedValueIteration.PBVISolver()
+solver = PBVISolver2(;max_iterations=10)
+solver2 = PointBasedValueIteration.PBVISolver(;max_iterations=10)
+m2 = RockSamplePOMDP()

@@ -1,13 +1,13 @@
 #Borrowing from github.com/JuliaPOMDP/PointBasedValueIteration.jl
 
-struct PBVISolver2 <: Solver
+struct PBVISolver <: Solver
     max_iterations::Int64
     ϵ::Float64
     verbose::Bool
 end
 
-function PBVISolver2(; max_iterations::Int64=10, ϵ::Float64=0.01, verbose::Bool=false)
-    return PBVISolver2(max_iterations, ϵ, verbose)
+function PBVISolver(; max_iterations::Int64=10, ϵ::Float64=0.01, verbose::Bool=false)
+    return PBVISolver(max_iterations, ϵ, verbose)
 end
 
 struct PBVI_cache{S,A}
@@ -249,7 +249,7 @@ end
 # 2: while V has not converged to V∗ do
 # 3:    Improve(V, B)
 # 4:    B ← Expand(B)
-function solve(solver::PBVISolver2, pomdp::POMDP)
+function solve(solver::PBVISolver, pomdp::POMDP)
     S = ordered_states(pomdp)
     A = ordered_actions(pomdp)
     γ = discount(pomdp)

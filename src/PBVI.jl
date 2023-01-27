@@ -10,7 +10,7 @@ import POMDPs: Solver, solve
 import Base: ==, hash, convert
 import FiniteHorizonPOMDPs: InStageDistribution, FixedHorizonPOMDPWrapper
 
-export PBVISolver2, solve
+export PBVISolver, solve
 
 include("solver.jl")
 

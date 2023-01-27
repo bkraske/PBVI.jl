@@ -6,6 +6,6 @@ using BenchmarkTools
 using RockSample
 
 m = TigerPOMDP()
-solver = PBVISolver2(;max_iterations=10)
+solver = PBVISolver(;max_iterations=10)
 solver2 = PointBasedValueIteration.PBVISolver(;max_iterations=10)
 m2 = RockSamplePOMDP()

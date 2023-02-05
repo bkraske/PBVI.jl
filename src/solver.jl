@@ -1,51 +1,9 @@
 #Borrowing from github.com/JuliaPOMDP/PointBasedValueIteration.jl
 
-struct PBVISolver <: Solver
-    max_iterations::Int64
-    ϵ::Float64
-    verbose::Bool
-end
-
-function PBVISolver(; max_iterations::Int64=10, ϵ::Float64=0.01, verbose::Bool=false)
-    return PBVISolver(max_iterations, ϵ, verbose)
-end
-
-struct PBVI_cache{S,A}
-    spomdp::SparseTabularPOMDP
-    ordered_states::Vector{S}
-    ordered_actions::Vector{A}
-    terminals::Union{Vector{Int64},Vector{Union{}}}
-    not_terminals::Vector{Int64}
-    b::Vector{Float64}
-    Γa::Vector{Vector{Float64}}
-    Γao::Vector{Vector{Float64}}
-end
-
-function PBVI_cache(pomdp::POMDP)
-    spomdp = SparseTabularPOMDP(pomdp)
-    ordered_s = ordered_states(pomdp)
-    ordered_a = ordered_actions(pomdp)
-    terminals = [stateindex(pomdp, s) for s in ordered_s if isterminal(pomdp, s)]
-    not_terminals = [stateindex(pomdp, s) for s in ordered_s if !isterminal(pomdp, s)]
-    b = Vector{Float64}(undef,length(states(pomdp)))
-    Γa = Vector{Vector{Float64}}(undef, length(ordered_a))
-    Γao = Vector{Vector{Float64}}(undef, length(ordered_observations(pomdp)))
-    return PBVI_cache(spomdp,ordered_s,ordered_a,
-                      terminals,not_terminals,b,Γa,Γao)
-end
-
-
-
-"""
-    AlphaVec
-Pair of alpha vector and corresponding action.
-# Fields
-- `alpha` α vector
-- `action` action corresponding to α vector
-"""
-struct AlphaVec
-    alpha::Vector{Float64}
-    action::Any
+Base.@kwdef struct PBVISolver <: Solver
+    max_iterations::Int = 10
+    ϵ::Float64          = 1e-2
+    verbose::Bool       = false
 end
 
 function max_alpha_val(Γ, b)
@@ -59,19 +17,6 @@ function max_alpha_val(Γ, b)
         end
     end
     return max_α
-end
-
-function max_alpha_val_ind(Γ, b)
-    max_ind = 1
-    max_val = -Inf
-    for (i,α) ∈ enumerate(Γ)
-        val = dot(α, b)
-        if val > max_val
-            max_ind = i
-            max_val = val
-        end
-    end
-    return max_ind
 end
 
 # adds probabilities of terminals in b to b′ and normalizes b′

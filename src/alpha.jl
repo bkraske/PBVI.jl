@@ -7,4 +7,4 @@ end
 
 @inline Base.size(v::AlphaVec) = size(v.v)
 
-@inline Base.getindex(v::AlphaVec, i) = getindex(v,v[i])
+@inline Base.getindex(v::AlphaVec, i) = getindex(v.v,i)

@@ -1,23 +1,20 @@
-struct PBVI_cache{S,A}
-    spomdp::SparseTabularPOMDP
-    ordered_states::Vector{S}
-    ordered_actions::Vector{A}
-    terminals::Union{Vector{Int64},Vector{Union{}}}
-    not_terminals::Vector{Int64}
-    b::Vector{Float64}
-    Γa::Vector{Vector{Float64}}
-    Γao::Vector{Vector{Float64}}
+struct TreeCache
+    pred::SparseVector{Float64,Int}
+    alpha::Vector{Float64}
+    Γ::Array{Float64,3}
+    Γ_tmp::Vector{AlphaVec}
+    Oᵀ::Vector{SparseMatrixCSC{Float64, Int64}}
 end
 
-function PBVI_cache(pomdp::POMDP)
-    spomdp = SparseTabularPOMDP(pomdp)
-    ordered_s = ordered_states(pomdp)
-    ordered_a = ordered_actions(pomdp)
-    terminals = [stateindex(pomdp, s) for s in ordered_s if isterminal(pomdp, s)]
-    not_terminals = [stateindex(pomdp, s) for s in ordered_s if !isterminal(pomdp, s)]
-    b = Vector{Float64}(undef,length(states(pomdp)))
-    Γa = Vector{Vector{Float64}}(undef, length(ordered_a))
-    Γao = Vector{Vector{Float64}}(undef, length(ordered_observations(pomdp)))
-    return PBVI_cache(spomdp,ordered_s,ordered_a,
-                      terminals,not_terminals,b,Γa,Γao)
+function TreeCache(pomdp::ModifiedSparseTabular)
+    Ns = n_states(pomdp)
+    Na = n_actions(pomdp)
+    No = n_observations(pomdp)
+
+    pred = Vector{Float64}(undef, Ns)
+    alpha = Vector{Float64}(undef, Ns)
+    Γ = Array{Float64,3}(undef, Ns, No, Na)
+    Γ_tmp = AlphaVec[]
+    Oᵀ = map(sparse ∘ transpose, pomdp.O)
+    return TreeCache(pred, alpha, Γ, Γ_tmp, Oᵀ)
 end

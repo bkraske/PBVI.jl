@@ -4,14 +4,17 @@ using POMDPs
 using POMDPTools
 using LinearAlgebra
 using Distributions
-using FiniteHorizonPOMDPs
+using SparseArrays
 
-import POMDPs: Solver, solve
-import Base: ==, hash, convert
-import FiniteHorizonPOMDPs: InStageDistribution, FixedHorizonPOMDPWrapper
+export PBVISolver
 
-export PBVISolver, solve
-
+include("sparse_tabular.jl")
+include("blind.jl")
+include("alpha.jl")
+include("cache.jl")
+include("updater.jl")
+include("tree.jl")
+include("backup.jl")
 include("solver.jl")
 
 end

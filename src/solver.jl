@@ -9,6 +9,7 @@ end
 function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
     t0 = time()
     max_iter_len = length(string(sol.max_iter))
+    pad_size = max(4, max_iter_len)
     tree = PBVITree(pomdp)
     push!(tree.b, tree.pomdp.initialstate)
     push!(tree.is_terminal, is_terminal_belief(tree.pomdp.initialstate, tree.pomdp.isterminal))
@@ -24,23 +25,22 @@ function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
 
     iter = 0
     if sol.verbose
-        iter_str = rpad("iter: $iter", 6+max_iter_len)
-        v_str = "v_root: $(round(v_root, sigdigits=3))"
-        println(iter_str, " | ", v_str)
+        init_str = rpad("iter", pad_size)*" | " * "v_root" * " | " * "|Γ|"
+        println('\n', init_str)
+        println('-'^length(init_str))
+        println(rpad("$iter", pad_size), " | ", round(v_root, sigdigits=3), " | ", length(tree.Γ))
     end
     while (time() - t0 < sol.max_time) && (iter < sol.max_iter)
         iter += 1
         expand!(tree)
-        backup!(tree)
+        backup_while_diff!(sol, tree)
 
         v_root_new = belief_value(tree.Γ, tree.b[1])
         ϵ = abs(v_root_new - v_root)
         v_root = v_root_new
-        if sol.verbose
-            iter_str = rpad("iter: $iter", 6+max_iter_len)
-            v_str = "v_root: $(round(v_root, sigdigits=3))"
-            println(iter_str, " | ", v_str)
-        end
+        sol.verbose && println(
+            rpad("$iter", pad_size), " | ", round(v_root, sigdigits=3), " | ", length(tree.Γ)
+        )
     end
 
     return AlphaVectorPolicy(
@@ -48,6 +48,18 @@ function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
         getproperty.(tree.Γ, :v),
         ordered_actions(pomdp)[getproperty.(tree.Γ, :a)]
     )
+end
+
+function backup_while_diff!(sol, tree)
+    ϵ = Inf
+    root_val = belief_value(tree.Γ, tree.b[1])
+    while ϵ > sol.ϵ
+        backup!(tree)
+        new_root_val = belief_value(tree.Γ, tree.b[1])
+        ϵ = new_root_val - root_val
+        root_val = new_root_val
+    end
+    return root_val
 end
 
 function expand!(tree::PBVITree)

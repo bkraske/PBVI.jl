@@ -80,11 +80,10 @@ end
 
 function distance_to_tree(tree, b′)
     d_min = Inf
+    b_cache = similar(b′)
     for b in tree.real
-        d = belief_distance(b, b′)
+        d = norm(b_cache .= b .- b′, 1)
         d < d_min && (d_min = d)
     end
     return d_min
 end
-
-belief_distance(b, b′) = norm(b .- b′, 2)

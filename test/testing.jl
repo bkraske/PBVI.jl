@@ -12,8 +12,17 @@ end
 
 
 
-m = TigerPOMDP()
-solver = PBVISolver(;max_iter=3)
-solve(solver, m)
+pomdp = TigerPOMDP()
+solver = PBVISolver(;max_iter=15)
+
+##
+pol = solve(PBVISolver(max_time=5.0, verbose=true, max_iter=20), pomdp)
+
+PBVI.belief_value(tree.Γ, tree.b[1])
+
+
 solver2 = PointBasedValueIteration.PBVISolver(;max_iterations=10)
 m2 = RockSamplePOMDP()
+
+
+solve(solver, pomdp)

@@ -3,31 +3,44 @@ Base.@kwdef struct PBVISolver{INIT} <: Solver
     max_time::Float64   = Inf
     max_iter::Int       = 10
     init::INIT          = BlindLowerBound()
+    verbose::Bool       = false
 end
 
 function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
     t0 = time()
+    max_iter_len = length(string(sol.max_iter))
     tree = PBVITree(pomdp)
     push!(tree.b, tree.pomdp.initialstate)
     push!(tree.is_terminal, is_terminal_belief(tree.pomdp.initialstate, tree.pomdp.isterminal))
+    push!(tree.b_children,NO_CHILDREN)
+    expand!(tree, 1)
+
     init_alpha = solve(sol.init, tree.pomdp)
     for (α,a) ∈ alphapairs(init_alpha)
         push!(tree.Γ, AlphaVec(α, a))
     end
-    fringe_begin = expand!(tree, 1)
     v_root = belief_value(tree.Γ, tree.b[1])
     ϵ = Inf
 
     iter = 0
-    # while (ϵ > sol.ϵ) && (time() - t0 < sol.max_time) && (iter < sol.max_iter)
+    if sol.verbose
+        iter_str = rpad("iter: $iter", 6+max_iter_len)
+        v_str = "v_root: $(round(v_root, sigdigits=3))"
+        println(iter_str, " | ", v_str)
+    end
     while (time() - t0 < sol.max_time) && (iter < sol.max_iter)
         iter += 1
-        fringe_begin = expand!(tree, fringe_begin)
-        backup!(tree, fringe_begin)
+        expand!(tree)
+        backup!(tree)
 
         v_root_new = belief_value(tree.Γ, tree.b[1])
         ϵ = abs(v_root_new - v_root)
         v_root = v_root_new
+        if sol.verbose
+            iter_str = rpad("iter: $iter", 6+max_iter_len)
+            v_str = "v_root: $(round(v_root, sigdigits=3))"
+            println(iter_str, " | ", v_str)
+        end
     end
 
     return AlphaVectorPolicy(
@@ -37,36 +50,28 @@ function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
     )
 end
 
-function expand!(tree::PBVITree, fringe_begin)
+function expand!(tree::PBVITree)
     pomdp = tree.pomdp
     A = actions(pomdp)
     O = observations(pomdp)
+    old_real = copy(tree.real)
 
-    fringe_end = length(tree.b)
-
-    for b_idx ∈ fringe_begin:fringe_end
-        if !tree.is_terminal[b_idx]
-            b = tree.b[b_idx]
-            n_b = length(tree.b_children)
-            b_children = n_b+1 : n_b+length(A)
-            for a ∈ A
-                n_ba = length(tree.ba_children)
-                ba_children = n_ba+1 : n_ba+length(O)
-                pred = dropzeros!(mul!(tree.cache.pred, pomdp.T[a],b))
-                for o ∈ O
-                    bp = corrector(pomdp, pred, a, o)
-                    po = sum(bp)
-                    po > 0. && (bp.nzval ./= po)
-
-                    terminal = iszero(po) || is_terminal_belief(bp, pomdp.isterminal)
-
-                    push!(tree.b, bp)
-                    push!(tree.is_terminal, terminal)
-                end
-                push!(tree.ba_children, ba_children)
+    for b_idx ∈ old_real
+        b_children = tree.b_children[b_idx]
+        tree.is_terminal[b_idx] && continue
+        d_max = 0.0
+        bp_idx_max = 0
+        for a ∈ A
+            ba_idx = b_children[a]
+            o = rand(O)
+            bp_idx = tree.ba_children[ba_idx][o]
+            bp = tree.b[bp_idx]
+            d = distance_to_tree(tree, bp)
+            if d > d_max
+                d_max = d
+                bp_idx_max = bp_idx
             end
-            push!(tree.b_children, b_children)
         end
+        expand!(tree, bp_idx_max)
     end
-    return fringe_end + 1
 end

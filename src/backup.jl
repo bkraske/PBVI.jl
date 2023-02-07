@@ -90,9 +90,9 @@ function backup(tree, b_idx)
     return AlphaVec(best_α, best_action)
 end
 
-function backup!(tree, fringe_begin)
+function backup!(tree)
     Γ′ = empty!(tree.cache.Γ_tmp)
-    for b_idx ∈ 1:fringe_begin-1
+    for b_idx ∈ tree.real
         !tree.is_terminal[b_idx] && push!(Γ′,backup(tree, b_idx))
     end
     resize!(tree.Γ, length(Γ′))

@@ -84,6 +84,6 @@ function expand!(tree::PBVITree)
                 bp_idx_max = bp_idx
             end
         end
-        expand!(tree, bp_idx_max)
+        d_max > 0. && expand!(tree, bp_idx_max)
     end
 end

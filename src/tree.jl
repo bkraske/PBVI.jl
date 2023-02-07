@@ -81,9 +81,53 @@ end
 function distance_to_tree(tree, b′)
     d_min = Inf
     b_cache = similar(b′)
-    for b in tree.real
-        d = norm(b_cache .= b .- b′, 1)
+    for b_idx in tree.real
+        b = tree.b[b_idx]
+        d = sparse_vec_norm_diff(b, b′)
+        # d = norm(b_cache .= b .- b′, 1)
         d < d_min && (d_min = d)
     end
     return d_min
+end
+
+function sparse_vec_norm_diff(x::SparseVector, y::SparseVector)
+    xnzind = SparseArrays.nonzeroinds(x)
+    xnzval = SparseArrays.nonzeros(x)
+    ynzind = SparseArrays.nonzeroinds(y)
+    ynzval = SparseArrays.nonzeros(y)
+    mx = length(xnzind)
+    my = length(ynzind)
+
+    return _sparse_vec_norm_diff(mx, my, xnzind, xnzval, ynzind, ynzval)
+end
+
+function _sparse_vec_norm_diff(mx::Int, my::Int,
+                            xnzind, xnzval::AbstractVector{Tx},
+                            ynzind, ynzval::AbstractVector{Ty}) where {Tx,Ty}
+    # f(nz, nz) -> z/nz, f(z, nz) -> nz, f(nz, z) -> nz
+    cum_v = 0.0
+    ix = 1; iy = 1
+    @inbounds while ix <= mx && iy <= my
+        jx = xnzind[ix]
+        jy = ynzind[iy]
+        if jx == jy
+            cum_v += abs2(xnzval[ix] - ynzval[iy])
+            ix += 1; iy += 1
+        elseif jx < jy
+            cum_v += abs2(xnzval[ix] - zero(Ty))
+            ix += 1
+        else
+            cum_v = abs2(zero(Tx) - ynzval[iy])
+            iy += 1
+        end
+    end
+    @inbounds while ix <= mx
+        cum_v += abs2(xnzval[ix] - zero(Ty))
+        ix += 1
+    end
+    @inbounds while iy <= my
+        cum_v = abs2(zero(Tx) - ynzval[iy])
+        iy += 1
+    end
+    return cum_v
 end

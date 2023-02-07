@@ -117,7 +117,7 @@ function _sparse_vec_norm_diff(mx::Int, my::Int,
             cum_v += abs2(xnzval[ix] - zero(Ty))
             ix += 1
         else
-            cum_v = abs2(zero(Tx) - ynzval[iy])
+            cum_v += abs2(zero(Tx) - ynzval[iy])
             iy += 1
         end
     end
@@ -126,7 +126,7 @@ function _sparse_vec_norm_diff(mx::Int, my::Int,
         ix += 1
     end
     @inbounds while iy <= my
-        cum_v = abs2(zero(Tx) - ynzval[iy])
+        cum_v += abs2(zero(Tx) - ynzval[iy])
         iy += 1
     end
     return cum_v

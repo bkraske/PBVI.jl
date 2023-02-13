@@ -11,25 +11,28 @@ begin
 end
 
 
-
 pomdp = TigerPOMDP()
-solver = PBVISolver(;max_iter=15)
+solver = PBVISolver(;max_iter=2)
 
 ##
-pol = solve(PBVISolver(max_time=1.0, verbose=true, max_iter=20), pomdp)
-sol = PBVISolver(max_time=1.0, verbose=false, max_iter=10)
+pol = solve(PBVISolver(max_time=5.0, verbose=true, max_iter=10), pomdp)
+sol = PBVISolver(max_time=1.0, verbose=false, max_iter=20)
 @profiler solve(sol, pomdp)
+
+@profiler solve(sol, pomdp)
+
 
 @btime solve(sol, pomdp)
 
 PBVI.belief_value(tree.Γ, tree.b[1])
 
-solver2 = PointBasedValueIteration.PBVISolver(;max_iterations=10)
+solver2 = PointBasedValueIteration.PBVISolver(;max_iterations=2)
 m2 = RockSamplePOMDP()
 
 
-pol1 = solve(sol, pomdp)
+pol1 = solve(sol2, m2)
 
+value(pol, initialstate(pomdp))
 
 ##
 using SparseArrays
@@ -49,11 +52,3 @@ using BenchmarkTools
 @btime dist3($v1, $v2, $v3)
 
 mapreduce(-, +, v1, v2)
-
-##
-import PointBasedValueIteration
-sol2 = PointBasedValueIteration.PBVISolver(max_iterations=10, verbose=true)
-pol2 = solve(sol2, pomdp)
-
-value(pol2, initialstate(pomdp))
-value(pol1, initialstate(pomdp))

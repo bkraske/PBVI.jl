@@ -50,7 +50,6 @@ function expand!(tree, b_idx::Int)
     if !is_real(tree, b_idx)
         push!(tree.real, b_idx)
         if !tree.is_terminal[b_idx]
-            push!(tree.real, b_idx)
             expand_belief!(tree, b_idx)
         end
     end

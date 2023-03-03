@@ -1,5 +1,5 @@
 using Test
-# using PBVI
+using PBVI
 using SparseArrays
 using POMDPModels
 using POMDPs

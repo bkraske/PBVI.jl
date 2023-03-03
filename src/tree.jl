@@ -11,6 +11,7 @@ Base.@kwdef struct PBVITree
     Γ::Vector{AlphaVec}                 = AlphaVec[]
     cache::TreeCache
     pomdp::ModifiedSparseTabular
+    depth::Vector{Int}                  = Int[0]
 end
 
 function PBVITree(pomdp::ModifiedSparseTabular)
@@ -62,6 +63,7 @@ function expand_belief!(tree, b_idx::Int)
     O = observations(pomdp)
     n_ba = length(tree.ba_children)
     tree.b_children[b_idx] = (n_ba+1) : (n_ba + length(A))
+    d_idx = tree.depth[b_idx]
     for a ∈ A
         n_b = length(tree.b)
         push!(tree.ba_children, (n_b+1) : (n_b+length(O)) )
@@ -72,6 +74,7 @@ function expand_belief!(tree, b_idx::Int)
             po > 0. && (bp.nzval ./= po)
             terminal = iszero(po) || is_terminal_belief(bp, pomdp.isterminal)
             push!(tree.b, bp)
+            push!(tree.depth, d_idx+1)
             push!(tree.is_terminal, terminal)
             push!(tree.b_children, NO_CHILDREN)
         end

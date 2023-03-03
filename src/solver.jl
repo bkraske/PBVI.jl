@@ -49,7 +49,7 @@ function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
             pomdp,
             getproperty.(tree.Γ, :v),
             ordered_actions(pomdp)[getproperty.(tree.Γ, :a)]
-        ), tree.b[getproperty.(tree.Γ, :b)]
+        ), tree.b[getproperty.(tree.Γ, :b)], tree.depth[getproperty.(tree.Γ, :b)]
     else
         return AlphaVectorPolicy(
             pomdp,

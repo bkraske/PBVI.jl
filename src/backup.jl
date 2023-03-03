@@ -87,7 +87,7 @@ function backup(tree, b_idx)
         end
     end
 
-    return AlphaVec(best_α, best_action)
+    return AlphaVec(best_α, best_action, b_idx)
 end
 
 function backup!(tree)

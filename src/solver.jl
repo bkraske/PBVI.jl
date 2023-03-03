@@ -4,6 +4,7 @@ Base.@kwdef struct PBVISolver{INIT} <: Solver
     max_iter::Int       = 10
     init::INIT          = BlindLowerBound()
     verbose::Bool       = false
+    witness_b::Bool     = false
 end
 
 function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
@@ -18,7 +19,7 @@ function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
 
     init_alpha = solve(sol.init, tree.pomdp)
     for (α,a) ∈ alphapairs(init_alpha)
-        push!(tree.Γ, AlphaVec(α, a))
+        push!(tree.Γ, AlphaVec(α, a, 0))
     end
     v_root = belief_value(tree.Γ, tree.b[1])
     ϵ = Inf
@@ -43,11 +44,19 @@ function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
         )
     end
 
-    return AlphaVectorPolicy(
-        pomdp,
-        getproperty.(tree.Γ, :v),
-        ordered_actions(pomdp)[getproperty.(tree.Γ, :a)]
-    )
+    if sol.witness_b
+        return AlphaVectorPolicy(
+            pomdp,
+            getproperty.(tree.Γ, :v),
+            ordered_actions(pomdp)[getproperty.(tree.Γ, :a)]
+        ), tree.b[getproperty.(tree.Γ, :b)]
+    else
+        return AlphaVectorPolicy(
+            pomdp,
+            getproperty.(tree.Γ, :v),
+            ordered_actions(pomdp)[getproperty.(tree.Γ, :a)]
+        )
+    end
 end
 
 function backup_while_diff!(sol, tree)

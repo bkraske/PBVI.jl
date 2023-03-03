@@ -1,6 +1,7 @@
 struct AlphaVec <: AbstractVector{Float64}
     v::Vector{Float64}
     a::Int
+    b::Int
 end
 
 @inline Base.length(v::AlphaVec) = length(v.v)

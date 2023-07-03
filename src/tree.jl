@@ -46,7 +46,7 @@ if terminal, still want to add to real, but can't expand
 if real, already expanded, don't want to add to real and don't want to expand
 if not real and not terminal, want to add to real and expand
 """
-function expand!(tree, b_idx::Int)
+function expand!(tree::PBVITree, b_idx::Int)
     if !is_real(tree, b_idx)
         push!(tree.real, b_idx)
         if !tree.is_terminal[b_idx]

@@ -5,6 +5,7 @@ using POMDPTools
 using LinearAlgebra
 using Distributions
 using SparseArrays
+using Random: AbstractRNG, default_rng
 
 export PBVISolver
 

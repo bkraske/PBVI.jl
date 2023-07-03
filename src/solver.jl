@@ -1,8 +1,9 @@
-Base.@kwdef struct PBVISolver{INIT} <: Solver
+Base.@kwdef struct PBVISolver{INIT,RNG<:AbstractRNG} <: Solver
     ϵ::Float64          = 1e-2
     max_time::Float64   = Inf
     max_iter::Int       = 10
     init::INIT          = BlindLowerBound()
+    rng::RNG            = default_rng(1337)
     verbose::Bool       = false
     witness_b::Bool     = false
 end
@@ -33,7 +34,7 @@ function POMDPs.solve(sol::PBVISolver, pomdp::POMDP)
     end
     while (time() - t0 < sol.max_time) && (iter < sol.max_iter)
         iter += 1
-        expand!(tree)
+        expand!(sol, tree)
         backup_while_diff!(sol, tree)
 
         v_root_new = belief_value(tree.Γ, tree.b[1])
@@ -71,8 +72,9 @@ function backup_while_diff!(sol, tree)
     return root_val
 end
 
-function expand!(tree::PBVITree)
-    pomdp = tree.pomdp
+function expand!(sol::PBVISolver, tree::PBVITree)
+    (;rng) = sol
+    (;pomdp) = tree
     A = actions(pomdp)
     O = observations(pomdp)
     old_real = copy(tree.real)
@@ -84,7 +86,7 @@ function expand!(tree::PBVITree)
         bp_idx_max = 0
         for a ∈ A
             ba_idx = b_children[a]
-            o = rand(O)
+            o = rand(rng, O)
             bp_idx = tree.ba_children[ba_idx][o]
             bp = tree.b[bp_idx]
             d = distance_to_tree(tree, bp)
